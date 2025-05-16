@@ -1,59 +1,91 @@
-// This file should implement the game using a custom implementation of a BST (that is based on your implementation from lab02)
 #include <iostream>
 #include <fstream>
 #include <string>
 #include "card.h"
 #include "card_list.h"
-//Do not include set in this file
-
 
 using namespace std;
 
+void playGame(BST& Alice, BST& Bob) {
+    bool found = false;
 
-int main(int argv, char** argc){
- if(argv < 3){
-   cout << "Please provide 2 file names" << endl;
-   return 1;
- }
-  ifstream cardFile1 (argc[1]);
- ifstream cardFile2 (argc[2]);
- string line;
+    // Main game loop: Match Alice's and Bob's cards
+    while (true) {
+        found = false;
 
+        // Alice's turn: Try to find matching card in Bob's deck
+        for (auto it = Alice.begin(); it != Alice.end(); ++it) {
+            if (Bob.contains(it->getRank())) {
+                cout << "Alice picked matching card " << *it << endl;
+                Bob.remove(it->getRank());
+                Alice.remove(it->getRank());
+                found = true;
+                break;
+            }
+        }
 
- if (cardFile1.fail() || cardFile2.fail() ){
-   cout << "Could not open file " << argc[2];
-   return 1;
- }
+        if (!found) break;
 
+        found = false;
 
- BST Alice;
- BST Bob;
+        // Bob's turn: Try to find matching card in Alice's deck (in reverse order)
+        for (auto it = Bob.rbegin(); it != Bob.rend(); ++it) {
+            if (Alice.contains(it->getRank())) {
+                cout << "Bob picked matching card " << *it << endl;
+                Alice.remove(it->getRank());
+                Bob.remove(it->getRank());
+                found = true;
+                break;
+            }
+        }
 
+        if (!found) break;
+    }
+}
 
- while (getline (cardFile1, line) && (line.length() > 0)){
-   char suit = line[0];
-   string rank = line.substr(2);
-   Alice.insert(Card(suit,rank));
- }
- cardFile1.close();
+int main(int argc, char** argv) {
+    if (argc < 3) {
+        cout << "Please provide 2 file names" << endl;
+        return 1;
+    }
 
+    ifstream cardFile1(argv[1]);
+    ifstream cardFile2(argv[2]);
+    string line;
 
+    if (cardFile1.fail() || cardFile2.fail()) {
+        cout << "Could not open file " << argv[2];
+        return 1;
+    }
 
+    BST Alice;
+    BST Bob;
 
- while (getline (cardFile2, line) && (line.length() > 0)){
-   char suit = line[0];
-   string rank = line.substr(2);
-   Bob.insert(Card(suit,rank));
- }
- cardFile2.close();
- //   playGame(Alice,Bob);
+    // Read Alice's cards
+    while (getline(cardFile1, line) && (line.length() > 0)) {
+        char suit = line[0];
+        string rank = line.substr(2);
+        Alice.insert(Card(suit, rank));
+    }
+    cardFile1.close();
 
+    // Read Bob's cards
+    while (getline(cardFile2, line) && (line.length() > 0)) {
+        char suit = line[0];
+        string rank = line.substr(2);
+        Bob.insert(Card(suit, rank));
+    }
+    cardFile2.close();
 
- cout<<"Alice's cards: "<<endl;
- Alice.printDeck();
+    // Play the game
+    playGame(Alice, Bob);
 
+    // Print final card lists
+    cout << "Alice's cards:" << endl;
+    Alice.printDeck();
 
- cout<<"Bob's cards: "<<endl;
- Bob.printDeck();
-  return 0;
+    cout << "Bob's cards:" << endl;
+    Bob.printDeck();
+
+    return 0;
 }
