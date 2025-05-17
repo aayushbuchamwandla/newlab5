@@ -1,23 +1,54 @@
+// main.cpp
 #include <iostream>
+#include <fstream>
+#include <string>
 #include "card.h"
-#include "BST.h"  // Assuming your BST header is correctly implemented
+#include "card_list.h"
 
-void playGame(BST& Bob, BST& Alice) {
-    // Assuming some iterator 'it' for the deck, for example:
-    for (auto it = deck.begin(); it != deck.end(); ++it) { 
-        // Using the const-correct methods
-        if (Bob.contains(it->getRank())) {
-            Bob.remove(it->getRank());
-        }
-        if (Alice.contains(it->getRank())) {
-            Alice.remove(it->getRank());
-        }
+using namespace std;
+
+int main(int argc, char** argv) {
+    if (argc < 3) {
+        cout << "Please provide 2 file names" << endl;
+        return 1;
     }
-}
 
-int main() {
-    // Example setup for BST objects and game logic
-    BST Bob, Alice;
-    playGame(Bob, Alice);
+    ifstream aliceFile(argv[1]);
+    ifstream bobFile(argv[2]);
+    string line;
+
+    if (aliceFile.fail() || bobFile.fail()) {
+        cout << "Could not open one or both of the input files." << endl;
+        return 1;
+    }
+
+    BST aliceDeck, bobDeck;
+
+    // Read Alice's cards
+    while (getline(aliceFile, line) && !line.empty()) {
+        char suit = line[0];
+        string rank = line.substr(2);
+        aliceDeck.insert(Card(suit, rank));
+    }
+    aliceFile.close();
+
+    // Read Bob's cards
+    while (getline(bobFile, line) && !line.empty()) {
+        char suit = line[0];
+        string rank = line.substr(2);
+        bobDeck.insert(Card(suit, rank));
+    }
+    bobFile.close();
+
+    // Play the game
+    playGame(aliceDeck, bobDeck);
+
+    // Print final hands
+    cout << "Alice's cards:" << endl;
+    aliceDeck.printDeck();
+
+    cout << "Bob's cards:" << endl;
+    bobDeck.printDeck();
+
     return 0;
 }
