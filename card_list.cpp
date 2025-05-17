@@ -1,231 +1,238 @@
 #include "card_list.h"
 #include <iostream>
+#include <functional>
+
+
 using namespace std;
 
+
 BST::~BST() {
-    clear(root);
+   // Delete all nodes - post order traversal
+   std::function<void(Node*)> deleteAll = [&](Node* node) {
+       if (!node) return;
+       deleteAll(node->left);
+       deleteAll(node->right);
+       delete node;
+   };
+   deleteAll(root);
+   root = nullptr;
 }
 
-void BST::clear(Node* n) {
-    if (!n) return;
-    clear(n->left);
-    clear(n->right);
-    delete n;
+
+BST::Node* BST::insert(Node* node, const Card& card) {
+   if (!node) return new Node(card);
+
+
+   if (card.getRank() < node->data.getRank())
+       node->left = insert(node->left, card);
+   else if (card.getRank() > node->data.getRank())
+       node->right = insert(node->right, card);
+   else {
+       // duplicate rank, do nothing (no duplicates)
+   }
+   return node;
 }
+
 
 void BST::insert(const Card& card) {
-    insert(root, card, nullptr);
+   root = insert(root, card);
 }
 
-void BST::insert(Node*& node, const Card& card, Node* parent) {
-    if (!node) {
-        node = new Node(card, parent);
-    } else if (card < node->card) {
-        insert(node->left, card, node);
-    } else if (card > node->card) {
-        insert(node->right, card, node);
-    }
+
+BST::Node* BST::findMin(Node* node) const {
+   while (node && node->left)
+       node = node->left;
+   return node;
 }
 
-bool BST::contains(const Card& card) const {
-    return getNodeFor(card, root) != nullptr;
+
+BST::Node* BST::findMax(Node* node) const {
+   while (node && node->right)
+       node = node->right;
+   return node;
 }
 
-BST::Node* BST::getNodeFor(const Card& card, Node* n) const {
-    if (!n) return nullptr;
-    if (n->card == card) return n;
-    if (card < n->card) return getNodeFor(card, n->left);
-    return getNodeFor(card, n->right);
+
+BST::Node* BST::remove(Node* node, int rank, bool& removed) {
+   if (!node) return nullptr;
+   if (rank < node->data.getRank()) {
+       node->left = remove(node->left, rank, removed);
+   } else if (rank > node->data.getRank()) {
+       node->right = remove(node->right, rank, removed);
+   } else {
+       // Found node to remove
+       removed = true;
+       if (!node->left) {
+           Node* rightNode = node->right;
+           delete node;
+           return rightNode;
+       } else if (!node->right) {
+           Node* leftNode = node->left;
+           delete node;
+           return leftNode;
+       } else {
+           // two children: replace with min in right subtree
+           Node* minRight = findMin(node->right);
+           node->data = minRight->data;
+           node->right = remove(node->right, minRight->data.getRank(), removed);
+       }
+   }
+   return node;
 }
 
-bool BST::remove(const Card& card) {
-    return remove(root, card);
+
+bool BST::remove(int rank) {
+   bool removed = false;
+   root = remove(root, rank, removed);
+   return removed;
 }
 
-bool BST::remove(Node*& node, const Card& card) {
-    if (!node) return false;
 
-    if (card < node->card) {
-        return remove(node->left, card);
-    } else if (card > node->card) {
-        return remove(node->right, card);
-    } else {
-        // Node found
-        if (!node->left && !node->right) {
-            // No children
-            delete node;
-            node = nullptr;
-        } else if (!node->left) {
-            // Only right child
-            Node* temp = node;
-            node = node->right;
-            if (node) node->parent = temp->parent;
-            delete temp;
-        } else if (!node->right) {
-            // Only left child
-            Node* temp = node;
-            node = node->left;
-            if (node) node->parent = temp->parent;
-            delete temp;
-        } else {
-            // Two children
-            Node* successor = getSuccessorNodeInternal(node);
-            node->card = successor->card;
-            remove(node->right, successor->card);
-        }
-        return true;
-    }
+bool BST::contains(Node* node, int rank) const {
+   if (!node) return false;
+   if (rank < node->data.getRank()) return contains(node->left, rank);
+   else if (rank > node->data.getRank()) return contains(node->right, rank);
+   else return true;
 }
 
-BST::Node* BST::getSuccessorNodeInternal(Node* n) const {
-    if (!n) return nullptr;
-    if (n->right) return getMinNode(n->right);
 
-    Node* parent = n->parent;
-    while (parent && n == parent->right) {
-        n = parent;
-        parent = parent->parent;
-    }
-    return parent;
+bool BST::contains(int rank) const {
+   return contains(root, rank);
 }
 
-BST::Node* BST::getPredecessorNodeInternal(Node* n) const {
-    if (!n) return nullptr;
-    if (n->left) return getMaxNode(n->left);
 
-    Node* parent = n->parent;
-    while (parent && n == parent->left) {
-        n = parent;
-        parent = parent->parent;
-    }
-    return parent;
+void BST::printDeck(Node* node) const {
+   if (!node) return;
+   printDeck(node->left);
+   cout << node->data << " ";
+   printDeck(node->right);
 }
 
-BST::Node* BST::getMinNode(Node* n) const {
-    if (!n) return nullptr;
-    while (n->left) n = n->left;
-    return n;
-}
-
-BST::Node* BST::getMaxNode(Node* n) const {
-    if (!n) return nullptr;
-    while (n->right) n = n->right;
-    return n;
-}
 
 void BST::printDeck() const {
-    printInOrder(root);
-    cout << endl;
+   printDeck(root);
+   cout << endl;
 }
 
-void BST::printInOrder(Node* n) const {
-    if (!n) return;
-    printInOrder(n->left);
-    cout << n->card << endl;
-    printInOrder(n->right);
+
+int BST::count(Node* node) const {
+   if (!node) return 0;
+   return 1 + count(node->left) + count(node->right);
 }
 
-// Iterator Implementation
-// BST::Iterator::Iterator(Node* ptr, const BST* bst) : current(ptr), tree(bst) {}
+
+int BST::count() const {
+   return count(root);
+}
+
+
+// BST Iterator Implementation
+
+
+void BST::Iterator::pushLeft(Node* node) {
+   while (node) {
+       stack.push(node);
+       node = node->left;
+   }
+}
+
+
+BST::Iterator::Iterator(Node* root) {
+   pushLeft(root);
+}
+
 
 BST::Iterator& BST::Iterator::operator++() {
-    if (current) {
-        current = inorderSuccessor(current);
-    }
-    return *this;
+   if (stack.empty()) return *this;
+
+
+   Node* node = stack.top();
+   stack.pop();
+
+
+   if (node->right)
+       pushLeft(node->right);
+
+
+   return *this;
 }
 
-BST::Iterator BST::Iterator::operator++(int) {
-    Iterator temp = *this;
-    ++(*this);
-    return temp;
+
+bool BST::Iterator::operator!=(const Iterator& other) const {
+   if (stack.empty() && other.stack.empty())
+       return false;
+   if (stack.empty() || other.stack.empty())
+       return true;
+   return stack.top() != other.stack.top();
 }
 
-BST::Iterator& BST::Iterator::operator--() {
-    if (current) {
-        current = reverseInorderSuccessor(current);
-    }
-    return *this;
+
+const Card& BST::Iterator::operator*() const {
+   return stack.top()->data;
 }
 
-BST::Iterator BST::Iterator::operator--(int) {
-    Iterator temp = *this;
-    --(*this);
-    return temp;
-}
-
-BST::Node* BST::Iterator::inorderSuccessor(Node* node) const {
-    if (!node) return nullptr;
-    if (node->right) return tree->getMinNode(node->right);
-    Node* parent = node->parent;
-    while (parent && node == parent->right) {
-        node = parent;
-        parent = parent->parent;
-    }
-    return parent;
-}
-
-BST::Node* BST::Iterator::reverseInorderSuccessor(Node* node) const {
-    if (!node) return nullptr;
-    if (node->left) return tree->getMaxNode(node->left);
-    Node* parent = node->parent;
-    while (parent && node == parent->left) {
-        node = parent;
-        parent = parent->parent;
-    }
-    return parent;
-}
 
 BST::Iterator BST::begin() const {
-    return Iterator(getMinNode(root), this);
+   return Iterator(root);
 }
+
 
 BST::Iterator BST::end() const {
-    return Iterator(nullptr, this);
+   return Iterator(nullptr);
 }
 
-BST::Iterator BST::rbegin() const {
-    return Iterator(getMaxNode(root), this);
+
+// BST Reverse Iterator Implementation
+
+
+void BST::ReverseIterator::pushRight(Node* node) {
+   while (node) {
+       stack.push(node);
+       node = node->right;
+   }
 }
 
-BST::Iterator BST::rend() const {
-    return Iterator(nullptr, this);
+
+BST::ReverseIterator::ReverseIterator(Node* root) {
+   pushRight(root);
 }
 
-// playGame function implementation
-void playGame(BST& alice, BST& bob) {
-    bool gameOver = false;
 
-    while (!gameOver) {
-        bool aliceMatch = false;
-        for (BST::Iterator it = alice.begin(); it != alice.end(); ++it) {
-            if (bob.contains(*it)) {
-                cout << "Alice picked matching card " << *it << endl;
-                bob.remove(*it);
-                alice.remove(*it);
-                aliceMatch = true;
-                break;
-            }
-        }
+BST::ReverseIterator& BST::ReverseIterator::operator--() {
+   if (stack.empty()) return *this;
 
-        if (!aliceMatch) {
-            gameOver = true;
-            continue;
-        }
 
-        bool bobMatch = false;
-        for (BST::Iterator it = bob.rbegin(); it != bob.rend(); --it) {
-            if (alice.contains(*it)) {
-                cout << "Bob picked matching card " << *it << endl;
-                alice.remove(*it);
-                bob.remove(*it);
-                bobMatch = true;
-                break;
-            }
-        }
+   Node* node = stack.top();
+   stack.pop();
 
-        if (!bobMatch) {
-            gameOver = true;
-        }
-    }
+
+   if (node->left)
+       pushRight(node->left);
+
+
+   return *this;
+}
+
+
+bool BST::ReverseIterator::operator!=(const ReverseIterator& other) const {
+   if (stack.empty() && other.stack.empty())
+       return false;
+   if (stack.empty() || other.stack.empty())
+       return true;
+   return stack.top() != other.stack.top();
+}
+
+
+const Card& BST::ReverseIterator::operator*() const {
+   return stack.top()->data;
+}
+
+
+BST::ReverseIterator BST::rbegin() const {
+   return ReverseIterator(root);
+}
+
+
+BST::ReverseIterator BST::rend() const {
+   return ReverseIterator(nullptr);
 }

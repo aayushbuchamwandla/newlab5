@@ -1,4 +1,3 @@
-// main_set.cpp
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -9,94 +8,113 @@
 using namespace std;
 
 
-int main(int argv, char** argc){
-    if(argv < 3){
-        cout << "Please provide 2 file names" << endl;
-        return 1;
-    }
-    ifstream cardFile1 (argc[1]);
-    ifstream cardFile2 (argc[2]);
-    string line;
+int main(int argc, char** argv) {
+   if (argc < 3) {
+       cout << "Please provide 2 file names" << endl;
+       return 1;
+   }
 
 
-    if (cardFile1.fail() || cardFile2.fail() ){
-        cout << "Could not open file " << argc[2];
-        return 1;
-    }
+   ifstream cardFile1(argv[1]);
+   ifstream cardFile2(argv[2]);
+   string line;
 
 
-    set<Card> Alice;
-    set<Card> Bob;
+   if (cardFile1.fail() || cardFile2.fail()) {
+       cout << "Could not open one of the files." << endl;
+       return 1;
+   }
 
 
-    //Read each file
-    while (getline (cardFile1, line) && (line.length() > 0)){
-        char suit = line[0];
-        string rank = line.substr(2);
-        Card c(suit,rank);
-        Alice.insert(c);
-    }
-    cardFile1.close();
+   set<Card> Alice;
+   set<Card> Bob;
 
 
+   // Load Alice's cards
+   while (getline(cardFile1, line) && !line.empty()) {
+       char suit = line[0];
+       string rank = line.substr(2);
+       Alice.insert(Card(suit, rank));
+   }
+   cardFile1.close();
 
 
-    while (getline (cardFile2, line) && (line.length() > 0)){
-        char suit = line[0];
-        string rank = line.substr(2);
-        Card c(suit,rank);
-        Bob.insert(c);
-    }
-    cardFile2.close();
-     while (true) {
-        bool found = false;
+   // Load Bob's cards
+   while (getline(cardFile2, line) && !line.empty()) {
+       char suit = line[0];
+       string rank = line.substr(2);
+       Bob.insert(Card(suit, rank));
+   }
+   cardFile2.close();
 
 
-        for (const auto& A: Alice) {
-            if (Bob.count(A)) {
-                cout<<"Alice picked matching card "<<A<<endl;
-                Bob.erase(A);
-                Alice.erase(A);
-                found = true;
-                break;
-            }
-        }
-        if (found == false) {
-            break;
-        }
+   while (true) {
+       bool found = false;
 
 
-        found = false;
+       // Alice picks matching card: from smallest to largest
+       for (auto it = Alice.begin(); it != Alice.end(); ++it) {
+           // Find matching card by rank in Bob
+           int rank = it->getRank();
 
 
-        auto i = Bob.rbegin();
-        while (i != Bob.rend()) {
-            if (Alice.count(*i)) {
-                cout<<"Bob picked matching card "<<*i<<endl;
-                found = true;
-                Alice.erase(*i);
-                Bob.erase(*i);
-                break;
-            }
-            ++i;
-        }
-        if (found == false) {
-            break;
-        }
-    }
+           // Bob search by rank, need to find any card in Bob with that rank
+           auto bobIt = find_if(Bob.begin(), Bob.end(), [rank](const Card& c) {
+               return c.getRank() == rank;
+           });
 
 
-    cout<<"Alice's cards: "<<endl;
-    for (const auto& card: Alice) {
-        cout<<card<<endl;
-    }
+           if (bobIt != Bob.end()) {
+               cout << "Alice picked matching card " << *it << endl;
+               Bob.erase(bobIt);
+               Alice.erase(it);
+               found = true;
+               break;
+           }
+       }
 
 
-    cout<<"Bob's cards: "<<endl;
-    for (const auto& card: Bob) {
-        cout<<card<<endl;
-    }
+       if (!found) break;
 
 
-    return 0;
+       found = false;
+
+
+       // Bob picks matching card: from largest to smallest
+       for (auto rit = Bob.rbegin(); rit != Bob.rend(); ++rit) {
+           int rank = rit->getRank();
+
+
+           auto aliceIt = find_if(Alice.begin(), Alice.end(), [rank](const Card& c) {
+               return c.getRank() == rank;
+           });
+
+
+           if (aliceIt != Alice.end()) {
+               cout << "Bob picked matching card " << *rit << endl;
+               Alice.erase(aliceIt);
+               // Erase by reverse iterator requires trick:
+               // convert reverse iterator to normal iterator:
+               Bob.erase(next(rit).base());
+               found = true;
+               break;
+           }
+       }
+       if (!found) break;
+   }
+
+
+   cout << "Alice's remaining cards: ";
+   for (const Card& c : Alice)
+       cout << c << " ";
+   cout << endl;
+
+
+   cout << "Bob's remaining cards: ";
+   for (const Card& c : Bob)
+       cout << c << " ";
+   cout << endl;
+
+
+   return 0;
 }
